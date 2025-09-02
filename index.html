@@ -3,64 +3,79 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Blaze Double — Calculadora Martingale</title>
+  <title>Blaze Double — Calculadora Martingale Avançada</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body{font-family:Inter,system-ui,Segoe UI,Arial;margin:18px;background:#0b1020;color:#e6eef8}
-    .card{background:#0f1724;padding:18px;border-radius:12px;box-shadow:0 6px 24px rgba(2,6,23,.6);max-width:980px;margin:auto}
+    .card{background:#0f1724;padding:18px;border-radius:12px;box-shadow:0 6px 24px rgba(2,6,23,.6);max-width:1200px;margin:auto}
     input,select{padding:8px;border-radius:8px;border:1px solid #1f2a44;background:#081025;color:#e6eef8}
     label{display:block;margin-top:10px;font-size:14px}
     .row{display:flex;gap:12px;flex-wrap:wrap}
     button{margin-top:12px;padding:10px 14px;border-radius:10px;border:0;background:#2563eb;color:white;cursor:pointer}
-    pre{white-space:pre-wrap;background:#071028;padding:12px;border-radius:8px;margin-top:12px}
+    pre{white-space:pre-wrap;background:#071028;padding:12px;border-radius:8px;margin-top:12px;max-height:280px;overflow:auto}
     .small{font-size:13px;color:#9fb0d6}
     table{width:100%;border-collapse:collapse;margin-top:12px}
     th,td{padding:8px;border-bottom:1px dashed #12304a;text-align:left}
     .green{color:#7ee787}
     .red{color:#ff8b8b}
+    canvas{background:#fff;border-radius:12px;margin-top:20px;padding:10px}
   </style>
 </head>
 <body>
   <div class="card">
-    <h2>Blaze Double — Calculadora Martingale</h2>
-    <p class="small">Simula apostas no jogo <strong>Double</strong> (15 posições: 7 vermelho, 7 preto, 1 branco). Use com responsabilidade.</p>
+    <h2>Blaze Double — Calculadora Martingale Avançada</h2>
+    <p class="small">Simula apostas no jogo <strong>Double</strong>. Agora com opção “In White”, exportação CSV, gráficos e parâmetros ajustáveis. Use com responsabilidade.</p>
 
     <div class="row">
-      <div style="flex:1;min-width:220px">
+      <div style="flex:1;min-width:260px">
+        <label>Slots Vermelho</label>
+        <input id="slotsRed" type="number" value="7" min="0" />
+
+        <label>Slots Preto</label>
+        <input id="slotsBlack" type="number" value="7" min="0" />
+
+        <label>Slots Branco</label>
+        <input id="slotsWhite" type="number" value="1" min="0" />
+
         <label>Saldo (bankroll)</label>
         <input id="bankroll" type="number" value="100" step="0.01" />
 
         <label>Aposta inicial (stake)</label>
         <input id="stake" type="number" value="1" step="0.01" />
 
-        <label>Max níveis Martingale (máx. dobradas)</label>
+        <label>Stake no Branco (In White)</label>
+        <input id="stakeWhite" type="number" value="0.1" step="0.01" />
+
+      </div>
+
+      <div style="flex:1;min-width:260px">
+        <label>Max níveis Martingale</label>
         <input id="maxLevel" type="number" value="8" min="0" />
 
         <label>Stop por sessão (perda máxima)</label>
         <input id="stopLoss" type="number" value="50" step="0.01" />
 
-      </div>
-
-      <div style="flex:1;min-width:220px">
         <label>Meta de lucro por sessão</label>
         <input id="targetProfit" type="number" value="10" step="0.01" />
 
         <label>Variant Martingale</label>
         <select id="variant">
           <option value="classic">Clássico (dobrar a cada perda)</option>
-          <option value="delayed">Martingale atrasado (dobrar após N perdas)</option>
+          <option value="delayed">Martingale atrasado</option>
         </select>
 
         <label id="delayLabel">N perdas antes de começar a dobrar</label>
         <input id="delay" type="number" value="1" min="1" />
 
-        <label>Simulações Monte Carlo (trials)</label>
+        <label>Simulações Monte Carlo</label>
         <input id="trials" type="number" value="1000" min="1" />
       </div>
     </div>
 
     <div style="margin-top:12px">
-      <button id="runOnce">Executar 1 sessão (até meta/stop)</button>
+      <button id="runOnce">Executar 1 sessão</button>
       <button id="runMC">Executar Monte Carlo</button>
+      <button id="exportCSV">Exportar CSV</button>
       <button id="reset">Resetar histórico</button>
     </div>
 
@@ -72,122 +87,141 @@
       <tbody></tbody>
     </table>
 
-    <p class="small">Modelo de probabilidades interno: Vermelho = 7/15, Preto = 7/15, Branco = 1/15. Pagamentos: vermelho/preto = 2× (ganho líquido = stake), branco = 14× (ganho líquido = 14× stake).</p>
+    <h3>Distribuição de Lucros (Monte Carlo)</h3>
+    <canvas id="chart" width="800" height="400"></canvas>
+
+    <h3>Exemplos reais de configurações (jogadores)</h3>
+    <ul class="small">
+      <li>Stake inicial: R$ 1, Meta: R$ 10, Stop-loss: R$ 30, Máx 6 níveis — estratégia conservadora.</li>
+      <li>Stake inicial: R$ 2, Meta: R$ 20, Stop-loss: R$ 50, In White 0.2 — estratégia balanceada.</li>
+      <li>Stake inicial: R$ 0.5, Meta: R$ 5, Stop-loss: R$ 15, Martingale atrasado (começa após 2 perdas) — estratégia agressiva.</li>
+    </ul>
 
   </div>
 
   <script>
-    // Probabilidades do jogo Double (15 slots)
-    const PROBS = { red:7/15, black:7/15, white:1/15 };
-    const PAY = { red:2, black:2, white:14 };
+    let mcResults = [];
+    let chart;
 
-    function spin(){
-      const r = Math.random();
-      if(r < PROBS.red) return 'red';
-      if(r < PROBS.red + PROBS.black) return 'black';
-      return 'white';
+    function updateChart(data){
+      const ctx = document.getElementById('chart').getContext('2d');
+      if(chart) chart.destroy();
+      chart = new Chart(ctx, {
+        type:'bar',
+        data:{labels:data.map((_,i)=>i+1),datasets:[{label:'Lucro por sessão',data:data,backgroundColor:'rgba(37,99,235,0.7)'}]},
+        options:{scales:{x:{display:false},y:{beginAtZero:true}}}
+      });
     }
 
-    const logEl = document.getElementById('log');
-    const tbody = document.querySelector('#table tbody');
-    let sessionCount = 0;
-
-    function writeLog(s){ logEl.textContent = s; }
+    function spin(probs){
+      const r = Math.random();
+      if(r < probs.red) return 'red';
+      if(r < probs.red + probs.black) return 'black';
+      return 'white';
+    }
 
     function runSession(opts){
       let bankroll = opts.bankroll;
       const initStake = opts.stake;
       let stake = initStake;
+      const stakeWhite = opts.stakeWhite;
       let level = 0;
       let rounds = 0;
       let maxStake = stake;
 
       while(true){
-        if(bankroll < stake) {
-          return {result:'broke', profit: (bankroll - opts.bankroll), rounds, maxStake };
-        }
-        bankroll -= stake;
-        const outcome = spin();
+        if(bankroll < (stake+stakeWhite)) return {result:'broke', profit:(bankroll-opts.bankroll), rounds, maxStake};
+        bankroll -= (stake+stakeWhite);
+        const outcome = spin(opts.probs);
         rounds++;
-        if(outcome === 'white'){
-          const win = stake * PAY.white;
-          bankroll += win;
-          level = 0; stake = initStake;
-        } else {
-          if(outcome === 'red'){
-            const win = stake * PAY.red;
-            bankroll += win;
-            level = 0; stake = initStake;
-          } else {
-            level++;
-            if(opts.variant === 'classic' || level >= opts.delay){
-              stake = stake * 2;
-            }
-          }
+
+        if(outcome==='red'){
+          bankroll += stake*opts.pay.red;
+        } else if(outcome==='black'){
+          level++;
+          if(opts.variant==='classic' || level>=opts.delay){stake*=2;}
+        } else if(outcome==='white'){
+          bankroll += stakeWhite*opts.pay.white;
         }
-        if(stake > maxStake) maxStake = stake;
-        const profit = bankroll - opts.bankroll;
-        if(profit >= opts.targetProfit) return {result:'target', profit: profit.toFixed(2), rounds, maxStake};
-        if(-profit >= opts.stopLoss) return {result:'stop', profit: profit.toFixed(2), rounds, maxStake};
-        if(level > opts.maxLevel) return {result:'maxlevel', profit: (bankroll - opts.bankroll).toFixed(2), rounds, maxStake};
+        if(stake>maxStake) maxStake=stake;
+
+        const profit = bankroll-opts.bankroll;
+        if(profit>=opts.targetProfit) return {result:'target',profit:profit.toFixed(2),rounds,maxStake};
+        if(-profit>=opts.stopLoss) return {result:'stop',profit:profit.toFixed(2),rounds,maxStake};
+        if(level>opts.maxLevel) return {result:'maxlevel',profit:(bankroll-opts.bankroll).toFixed(2),rounds,maxStake};
       }
     }
-
-    document.getElementById('runOnce').addEventListener('click', ()=>{
-      const opts = readOpts();
-      const res = runSession(opts);
-      sessionCount++;
-      tbody.insertAdjacentHTML('afterbegin', `<tr><td>${sessionCount}</td><td>${res.result}</td><td class="${res.profit>=0? 'green':'red'}">${res.profit}</td><td>${res.rounds}</td><td>${res.maxStake}</td></tr>`);
-      writeLog(JSON.stringify(res,null,2));
-    });
-
-    document.getElementById('runMC').addEventListener('click', ()=>{
-      const opts = readOpts();
-      const trials = +document.getElementById('trials').value || 1000;
-      let wins = 0, stops=0, broke=0, maxlevels=0, totalProfit=0;
-      let worst = Infinity, best=-Infinity;
-      writeLog('Rodando Monte Carlo — aguarde...');
-      for(let i=0;i<trials;i++){
-        const r = runSession(opts);
-        const p = parseFloat(r.profit) || r.profit;
-        totalProfit += +p;
-        if(r.result === 'target') wins++;
-        if(r.result === 'stop') stops++;
-        if(r.result === 'broke') broke++;
-        if(r.result === 'maxlevel') maxlevels++;
-        if(p < worst) worst = p;
-        if(p > best) best = p;
-      }
-      const avg = totalProfit / trials;
-      const summary = {
-        trials, wins, stops, broke, maxlevels, avg: avg.toFixed(4), best, worst
-      };
-      writeLog('Monte Carlo completo:\n' + JSON.stringify(summary,null,2));
-      sessionCount++;
-      tbody.insertAdjacentHTML('afterbegin', `<tr><td>${sessionCount}</td><td>MC</td><td class="green">avg ${summary.avg}</td><td>trials ${trials}</td><td>—</td></tr>`);
-    });
-
-    document.getElementById('reset').addEventListener('click', ()=>{ tbody.innerHTML=''; sessionCount=0; writeLog('Histórico limpo.'); });
 
     function readOpts(){
+      const red=parseInt(document.getElementById('slotsRed').value);
+      const black=parseInt(document.getElementById('slotsBlack').value);
+      const white=parseInt(document.getElementById('slotsWhite').value);
+      const total=red+black+white;
       return {
-        bankroll: parseFloat(document.getElementById('bankroll').value),
-        stake: parseFloat(document.getElementById('stake').value),
-        maxLevel: parseInt(document.getElementById('maxLevel').value,10),
-        stopLoss: parseFloat(document.getElementById('stopLoss').value),
-        targetProfit: parseFloat(document.getElementById('targetProfit').value),
-        variant: document.getElementById('variant').value,
-        delay: parseInt(document.getElementById('delay').value,10)
+        bankroll:parseFloat(document.getElementById('bankroll').value),
+        stake:parseFloat(document.getElementById('stake').value),
+        stakeWhite:parseFloat(document.getElementById('stakeWhite').value),
+        maxLevel:parseInt(document.getElementById('maxLevel').value),
+        stopLoss:parseFloat(document.getElementById('stopLoss').value),
+        targetProfit:parseFloat(document.getElementById('targetProfit').value),
+        variant:document.getElementById('variant').value,
+        delay:parseInt(document.getElementById('delay').value),
+        probs:{red:red/total,black:black/total,white:white/total},
+        pay:{red:2,black:2,white:14}
       };
     }
 
-    const variant = document.getElementById('variant');
-    variant.addEventListener('change', ()=>{
-      const v = variant.value;
-      document.getElementById('delay').style.display = v==='delayed'? 'inline-block':'none';
-      document.getElementById('delayLabel').style.display = v==='delayed'? 'block':'none';
+    const logEl=document.getElementById('log');
+    const tbody=document.querySelector('#table tbody');
+    let sessionCount=0;
+
+    document.getElementById('runOnce').addEventListener('click',()=>{
+      const opts=readOpts();
+      const res=runSession(opts);
+      sessionCount++;
+      tbody.insertAdjacentHTML('afterbegin',`<tr><td>${sessionCount}</td><td>${res.result}</td><td class="${res.profit>=0?'green':'red'}">${res.profit}</td><td>${res.rounds}</td><td>${res.maxStake}</td></tr>`);
+      logEl.textContent=JSON.stringify(res,null,2);
     });
-    variant.dispatchEvent(new Event('change'));
+
+    document.getElementById('runMC').addEventListener('click',()=>{
+      const opts=readOpts();
+      const trials=+document.getElementById('trials').value;
+      mcResults=[];
+      let total=0;
+      for(let i=0;i<trials;i++){
+        const r=runSession(opts);
+        const p=parseFloat(r.profit);
+        mcResults.push(p);
+        total+=p;
+      }
+      updateChart(mcResults);
+      const avg=total/trials;
+      logEl.textContent=`Monte Carlo (${trials}): Média ${avg.toFixed(2)}, Melhor ${Math.max(...mcResults)}, Pior ${Math.min(...mcResults)}`;
+    });
+
+    document.getElementById('exportCSV').addEventListener('click',()=>{
+      if(mcResults.length===0){alert('Execute Monte Carlo primeiro.');return;}
+      let csv="Lucro\n"+mcResults.join("\n");
+      const blob=new Blob([csv],{type:'text/csv'});
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download='montecarlo_results.csv';
+      a.click();
+    });
+
+    document.getElementById('reset').addEventListener('click',()=>{
+      tbody.innerHTML='';
+      sessionCount=0;
+      mcResults=[];
+      if(chart) chart.destroy();
+      logEl.textContent='Histórico limpo.';
+    });
+
+    document.getElementById('variant').addEventListener('change',()=>{
+      const v=document.getElementById('variant').value;
+      document.getElementById('delay').style.display=v==='delayed'?'inline-block':'none';
+      document.getElementById('delayLabel').style.display=v==='delayed'?'block':'none';
+    });
   </script>
 </body>
 </html>
