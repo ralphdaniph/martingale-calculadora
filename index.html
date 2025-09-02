@@ -1,178 +1,193 @@
-<!DOCTYPE html>
-<html lang="pt-br">
+<!doctype html>
+<html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Calculadora Martingale — Proteção 14x</title>
-  <meta name="description" content="Calculadora de Martingale com odds fixas: 2x para apostas normais e 14x para proteção. Proteção de banca, recuperação parcial e até 5 gales." />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com"></script>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Blaze Double — Calculadora Martingale</title>
   <style>
-    :root { color-scheme: dark light; }
-    html, body { font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
-    .glass { backdrop-filter: blur(12px); background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.04)); }
-    .ring-soft { box-shadow: 0 0 0 1px rgba(255,255,255,0.08) inset; }
+    body{font-family:Inter,system-ui,Segoe UI,Arial;margin:18px;background:#0b1020;color:#e6eef8}
+    .card{background:#0f1724;padding:18px;border-radius:12px;box-shadow:0 6px 24px rgba(2,6,23,.6);max-width:980px;margin:auto}
+    input,select{padding:8px;border-radius:8px;border:1px solid #1f2a44;background:#081025;color:#e6eef8}
+    label{display:block;margin-top:10px;font-size:14px}
+    .row{display:flex;gap:12px;flex-wrap:wrap}
+    button{margin-top:12px;padding:10px 14px;border-radius:10px;border:0;background:#2563eb;color:white;cursor:pointer}
+    pre{white-space:pre-wrap;background:#071028;padding:12px;border-radius:8px;margin-top:12px}
+    .small{font-size:13px;color:#9fb0d6}
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{padding:8px;border-bottom:1px dashed #12304a;text-align:left}
+    .green{color:#7ee787}
+    .red{color:#ff8b8b}
   </style>
 </head>
-<body class="min-h-screen bg-gradient-to-br from-slate-900 via-slate-950 to-black text-slate-100">
-  <header class="px-6 md:px-10 py-8">
-    <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-start md:items-center gap-4 justify-between">
-      <h1 class="text-2xl md:text-3xl font-bold tracking-tight">Calculadora de <span class="text-indigo-400">Martingale</span> <span class="text-slate-400">— Proteção 14x</span></h1>
-      <div class="text-xs md:text-sm text-slate-400 max-w-prose">Educacional apenas. Martingale envolve alto risco. Odds fixas: 2x e proteção 14x. Use com responsabilidade.</div>
+<body>
+  <div class="card">
+    <h2>Blaze Double — Calculadora Martingale</h2>
+    <p class="small">Simula apostas no jogo <strong>Double</strong> (15 posições: 7 vermelho, 7 preto, 1 branco). Use com responsabilidade.</p>
+
+    <div class="row">
+      <div style="flex:1;min-width:220px">
+        <label>Saldo (bankroll)</label>
+        <input id="bankroll" type="number" value="100" step="0.01" />
+
+        <label>Aposta inicial (stake)</label>
+        <input id="stake" type="number" value="1" step="0.01" />
+
+        <label>Max níveis Martingale (máx. dobradas)</label>
+        <input id="maxLevel" type="number" value="8" min="0" />
+
+        <label>Stop por sessão (perda máxima)</label>
+        <input id="stopLoss" type="number" value="50" step="0.01" />
+
+      </div>
+
+      <div style="flex:1;min-width:220px">
+        <label>Meta de lucro por sessão</label>
+        <input id="targetProfit" type="number" value="10" step="0.01" />
+
+        <label>Variant Martingale</label>
+        <select id="variant">
+          <option value="classic">Clássico (dobrar a cada perda)</option>
+          <option value="delayed">Martingale atrasado (dobrar após N perdas)</option>
+        </select>
+
+        <label id="delayLabel">N perdas antes de começar a dobrar</label>
+        <input id="delay" type="number" value="1" min="1" />
+
+        <label>Simulações Monte Carlo (trials)</label>
+        <input id="trials" type="number" value="1000" min="1" />
+      </div>
     </div>
-  </header>
 
-  <main class="px-6 md:px-10 pb-20">
-    <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <section class="lg:col-span-1 glass ring-soft rounded-2xl p-5 md:p-6">
-        <h2 class="text-lg font-semibold mb-4">Parâmetros</h2>
-        <form id="form" class="space-y-4">
-          <div class="grid grid-cols-2 gap-3">
-            <label class="col-span-2 text-sm text-slate-300">Banca (R$)
-              <input type="number" step="0.01" id="bankroll" class="mt-1 w-full rounded-xl bg-slate-900/60 ring-soft px-3 py-2" placeholder="1000" value="1000" />
-            </label>
-            <label class="col-span-1 text-sm text-slate-300">Aposta inicial (R$)
-              <input type="number" step="0.01" id="baseStake" class="mt-1 w-full rounded-xl bg-slate-900/60 ring-soft px-3 py-2" placeholder="10" value="10" />
-            </label>
-            <label class="col-span-1 text-sm text-slate-300">Recuperar perdas (% do lucro alvo)
-              <input type="range" id="recoverPct" min="50" max="110" step="5" value="100" class="w-full" />
-              <div class="text-xs text-slate-400"><span id="recoverPctLabel">100%</span> do valor da aposta inicial como lucro ao vencer.</div>
-            </label>
-          </div>
-
-          <div class="grid grid-cols-2 gap-3">
-            <label class="col-span-1 text-sm text-slate-300">Nº de gales
-              <select id="gales" class="mt-1 w-full rounded-xl bg-slate-900/60 ring-soft px-3 py-2">
-                <option value="0">0</option>
-                <option value="1" selected>1</option>
-                <option value="2">2</option>
-                <option value="3">3</option>
-                <option value="4">4</option>
-                <option value="5">5</option>
-              </select>
-            </label>
-            <label class="col-span-1 text-sm text-slate-300">Proteção ativa
-              <input type="checkbox" id="useProtect" class="mt-1 rounded" checked />
-            </label>
-          </div>
-
-          <fieldset class="space-y-3 border border-slate-700/50 rounded-2xl p-4">
-            <legend class="px-2 text-sm text-slate-300">Proteções de Banca</legend>
-            <label class="flex items-center gap-2 text-sm">
-              <input type="checkbox" id="bankProtect" class="rounded" checked />
-              <span>Proteger banca (limitar exposição total)</span>
-            </label>
-          </fieldset>
-
-          <div class="flex flex-wrap gap-3 pt-2">
-            <button type="button" id="btnCalcular" class="rounded-2xl px-4 py-2 bg-indigo-500 hover:bg-indigo-600 font-semibold shadow">Calcular</button>
-            <button type="button" id="btnReset" class="rounded-2xl px-4 py-2 bg-slate-800 hover:bg-slate-700 font-semibold">Resetar</button>
-          </div>
-        </form>
-      </section>
-
-      <section class="lg:col-span-2 space-y-6">
-        <div class="glass ring-soft rounded-2xl p-5 md:p-6">
-          <h2 class="text-lg font-semibold mb-4">Sequência de Apostas</h2>
-          <div class="overflow-auto">
-            <table class="min-w-full text-sm">
-              <thead class="text-slate-300">
-                <tr class="border-b border-slate-700/40">
-                  <th class="text-left py-2 pr-4">#</th>
-                  <th class="text-left py-2 pr-4">Gale</th>
-                  <th class="text-left py-2 pr-4">Aposta (R$)</th>
-                  <th class="text-left py-2 pr-4">Exposição Acum. (R$)</th>
-                  <th class="text-left py-2 pr-4">Lucro se ganhar (R$)</th>
-                </tr>
-              </thead>
-              <tbody id="tbody" class="divide-y divide-slate-800"></tbody>
-            </table>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div class="glass ring-soft rounded-2xl p-5 md:p-6">
-            <div class="text-sm text-slate-400">Exposição total (pior caso)</div>
-            <div id="totalExposure" class="text-2xl font-bold mt-1">R$ 0,00</div>
-          </div>
-          <div class="glass ring-soft rounded-2xl p-5 md:p-6">
-            <div class="text-sm text-slate-400">Maior aposta</div>
-            <div id="maxStake" class="text-2xl font-bold mt-1">R$ 0,00</div>
-          </div>
-          <div class="glass ring-soft rounded-2xl p-5 md:p-6">
-            <div class="text-sm text-slate-400">Prob. de sucesso até N gales</div>
-            <div id="successProb" class="text-2xl font-bold mt-1">0%</div>
-          </div>
-        </div>
-      </section>
+    <div style="margin-top:12px">
+      <button id="runOnce">Executar 1 sessão (até meta/stop)</button>
+      <button id="runMC">Executar Monte Carlo</button>
+      <button id="reset">Resetar histórico</button>
     </div>
-  </main>
 
-  <footer class="px-6 md:px-10 py-10 text-center text-xs text-slate-500">
-    Feito com ❤️ para estudo. Odds fixas: 2x entrada e 14x proteção.
-  </footer>
+    <pre id="log">Aguardando ação...</pre>
+
+    <h3>Histórico de sessões</h3>
+    <table id="table">
+      <thead><tr><th>#</th><th>Resultado</th><th>Lucro/Prejuízo</th><th>Rondas</th><th>Maior Aposta</th></tr></thead>
+      <tbody></tbody>
+    </table>
+
+    <p class="small">Modelo de probabilidades interno: Vermelho = 7/15, Preto = 7/15, Branco = 1/15. Pagamentos: vermelho/preto = 2× (ganho líquido = stake), branco = 14× (ganho líquido = 14× stake).</p>
+
+  </div>
 
   <script>
-    const $ = (id) => document.getElementById(id);
-    const fmt = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    // Probabilidades do jogo Double (15 slots)
+    const PROBS = { red:7/15, black:7/15, white:1/15 };
+    const PAY = { red:2, black:2, white:14 };
 
-    const formEls = ['bankroll','baseStake','gales','recoverPct','bankProtect','useProtect']
-      .reduce((acc, id) => (acc[id] = $(id), acc), {});
+    function spin(){
+      const r = Math.random();
+      if(r < PROBS.red) return 'red';
+      if(r < PROBS.red + PROBS.black) return 'black';
+      return 'white';
+    }
 
-    const tbody = $('tbody');
-    const totalExposureEl = $('totalExposure');
-    const maxStakeEl = $('maxStake');
-    const successProbEl = $('successProb');
+    const logEl = document.getElementById('log');
+    const tbody = document.querySelector('#table tbody');
+    let sessionCount = 0;
 
-    const updateRecoverLabel = () => { $('recoverPctLabel').textContent = `${formEls.recoverPct.value}%`; };
-    formEls.recoverPct.addEventListener('input', updateRecoverLabel);
-    updateRecoverLabel();
+    function writeLog(s){ logEl.textContent = s; }
 
-    const calcSequence = () => {
-      const bankroll = Number(formEls.bankroll.value);
-      const base = Number(formEls.baseStake.value);
-      const gales = Number(formEls.gales.value);
-      const recoverPct = Number(formEls.recoverPct.value)/100;
-      const bankProtect = formEls.bankProtect.checked;
-      const useProtect = formEls.useProtect.checked;
+    function runSession(opts){
+      let bankroll = opts.bankroll;
+      const initStake = opts.stake;
+      let stake = initStake;
+      let level = 0;
+      let rounds = 0;
+      let maxStake = stake;
 
-      const rows = [];
-      let cumulative = 0;
-      let maxStake = 0;
-      const targetProfit = base * recoverPct;
-
-      for(let i=0;i<=gales;i++){
-        let stake = (cumulative + targetProfit) / (useProtect && i===gales ? 14-1 : 2-1);
-        if(i===0) stake = Math.max(stake, base);
-        if(bankProtect && (cumulative+stake)>bankroll) stake = Math.max(0, bankroll - cumulative);
-
-        const winNet = stake*(useProtect && i===gales ? 14 : 2)- (cumulative + stake);
-        cumulative += stake;
-        maxStake = Math.max(maxStake, stake);
-        rows.push({idx:i+1,label:i===0?'Entrada':`Gale ${i}`,stake,exposure:cumulative,winNet});
-        if(stake<=0) break;
+      while(true){
+        if(bankroll < stake) {
+          return {result:'broke', profit: (bankroll - opts.bankroll), rounds, maxStake };
+        }
+        bankroll -= stake;
+        const outcome = spin();
+        rounds++;
+        if(outcome === 'white'){
+          const win = stake * PAY.white;
+          bankroll += win;
+          level = 0; stake = initStake;
+        } else {
+          if(outcome === 'red'){
+            const win = stake * PAY.red;
+            bankroll += win;
+            level = 0; stake = initStake;
+          } else {
+            level++;
+            if(opts.variant === 'classic' || level >= opts.delay){
+              stake = stake * 2;
+            }
+          }
+        }
+        if(stake > maxStake) maxStake = stake;
+        const profit = bankroll - opts.bankroll;
+        if(profit >= opts.targetProfit) return {result:'target', profit: profit.toFixed(2), rounds, maxStake};
+        if(-profit >= opts.stopLoss) return {result:'stop', profit: profit.toFixed(2), rounds, maxStake};
+        if(level > opts.maxLevel) return {result:'maxlevel', profit: (bankroll - opts.bankroll).toFixed(2), rounds, maxStake};
       }
-      const successProb = 1 - Math.pow(0.5, rows.length);
-      return {rows,totalExposure:cumulative,maxStake,successProb};
-    };
+    }
 
-    const render = () => {
-      const {rows,totalExposure,maxStake,successProb}=calcSequence();
-      tbody.innerHTML = rows.map(r=>`<tr><td class='py-2 pr-4 text-slate-400'>${r.idx}</td><td class='py-2 pr-4'>${r.label}</td><td class='py-2 pr-4'>${fmt(r.stake)}</td><td class='py-2 pr-4'>${fmt(r.exposure)}</td><td class='py-2 pr-4 ${r.winNet<0?'text-rose-300':''}'>${fmt(r.winNet)}</td></tr>`).join('');
-      totalExposureEl.textContent = fmt(totalExposure);
-      maxStakeEl.textContent = fmt(maxStake);
-      successProbEl.textContent = `${(successProb*100).toFixed(2)}%`;
-    };
-
-    $('btnCalcular').addEventListener('click', render);
-    $('btnReset').addEventListener('click',()=>{
-      formEls.bankroll.value=1000; formEls.baseStake.value=10; formEls.gales.value=1; formEls.recoverPct.value=100; updateRecoverLabel(); formEls.bankProtect.checked=true; formEls.useProtect.checked=true;
-      render();
+    document.getElementById('runOnce').addEventListener('click', ()=>{
+      const opts = readOpts();
+      const res = runSession(opts);
+      sessionCount++;
+      tbody.insertAdjacentHTML('afterbegin', `<tr><td>${sessionCount}</td><td>${res.result}</td><td class="${res.profit>=0? 'green':'red'}">${res.profit}</td><td>${res.rounds}</td><td>${res.maxStake}</td></tr>`);
+      writeLog(JSON.stringify(res,null,2));
     });
 
-    render();
+    document.getElementById('runMC').addEventListener('click', ()=>{
+      const opts = readOpts();
+      const trials = +document.getElementById('trials').value || 1000;
+      let wins = 0, stops=0, broke=0, maxlevels=0, totalProfit=0;
+      let worst = Infinity, best=-Infinity;
+      writeLog('Rodando Monte Carlo — aguarde...');
+      for(let i=0;i<trials;i++){
+        const r = runSession(opts);
+        const p = parseFloat(r.profit) || r.profit;
+        totalProfit += +p;
+        if(r.result === 'target') wins++;
+        if(r.result === 'stop') stops++;
+        if(r.result === 'broke') broke++;
+        if(r.result === 'maxlevel') maxlevels++;
+        if(p < worst) worst = p;
+        if(p > best) best = p;
+      }
+      const avg = totalProfit / trials;
+      const summary = {
+        trials, wins, stops, broke, maxlevels, avg: avg.toFixed(4), best, worst
+      };
+      writeLog('Monte Carlo completo:\n' + JSON.stringify(summary,null,2));
+      sessionCount++;
+      tbody.insertAdjacentHTML('afterbegin', `<tr><td>${sessionCount}</td><td>MC</td><td class="green">avg ${summary.avg}</td><td>trials ${trials}</td><td>—</td></tr>`);
+    });
+
+    document.getElementById('reset').addEventListener('click', ()=>{ tbody.innerHTML=''; sessionCount=0; writeLog('Histórico limpo.'); });
+
+    function readOpts(){
+      return {
+        bankroll: parseFloat(document.getElementById('bankroll').value),
+        stake: parseFloat(document.getElementById('stake').value),
+        maxLevel: parseInt(document.getElementById('maxLevel').value,10),
+        stopLoss: parseFloat(document.getElementById('stopLoss').value),
+        targetProfit: parseFloat(document.getElementById('targetProfit').value),
+        variant: document.getElementById('variant').value,
+        delay: parseInt(document.getElementById('delay').value,10)
+      };
+    }
+
+    const variant = document.getElementById('variant');
+    variant.addEventListener('change', ()=>{
+      const v = variant.value;
+      document.getElementById('delay').style.display = v==='delayed'? 'inline-block':'none';
+      document.getElementById('delayLabel').style.display = v==='delayed'? 'block':'none';
+    });
+    variant.dispatchEvent(new Event('change'));
   </script>
 </body>
 </html>
